@@ -44,6 +44,42 @@ void Test()
 
 	Value* add = Builder.CreateFAdd(v1, v2, "addtmp");
 
+
+	// create extern function add(A, B)
+	const char* Name = "Add";
+	auto Args = std::vector<std::string>{ "A", "B" };
+
+	std::vector<Type*> Doubles(Args.size(), Type::getDoubleTy(TheContext));
+	FunctionType* FT = FunctionType::get(Type::getDoubleTy(TheContext), Doubles, false);
+	Function* F = Function::Create(FT, Function::ExternalLinkage, Name, TheModule.get());
+	unsigned Idx = 0;
+	for (auto& Arg : F->args())
+		Arg.setName(Args[Idx++]);
+
+
+	// create function definition
+	Function* TheFunction = TheModule->getFunction(Name);
+
+	if (!TheFunction->empty())
+	{
+		//functions cant be redefined
+		assert(false);
+	}
+
+	BasicBlock* BB = BasicBlock::Create(TheContext, "entry", TheFunction);
+	Builder.SetInsertPoint(BB);
+
+	// Record the function arguments in the NamedValues map.
+	NamedValues.clear();
+	for (auto& Arg : TheFunction->args())
+		NamedValues[Arg.getName()] = &Arg;
+
+	Builder.CreateRet(add);
+
+	// Validate the generated code, checking for consistency.
+	verifyFunction(*TheFunction);
+
+
 	TheModule->print(errs(), nullptr);
 
 }
